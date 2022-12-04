@@ -15,6 +15,9 @@ locals {
   database_cidrs    = [for i, _ in local.availability_zone_names : cidrsubnet(var.base_cidr_block, 8, i + 100)]
   elasticache_cidrs = [for i, _ in local.availability_zone_names : cidrsubnet(var.base_cidr_block, 8, i + 150)]
 
+  tags = {
+    identifier = var.identifier
+  }
 }
 
 data "aws_availability_zones" "azs" {
@@ -52,4 +55,92 @@ module "vpc" {
     identifier = var.identifier
   }
 
+}
+
+module "vpc_endpoints" {
+  source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
+  version = "~> 3.18"
+
+  vpc_id             = module.vpc.vpc_id
+  security_group_ids = [data.aws_security_group.default.id]
+
+  endpoints = {
+    s3 = {
+      service = "s3"
+      tags    = { Name = "s3-vpc-endpoint" }
+    },
+    ssm = {
+      service             = "ssm"
+      private_dns_enabled = false
+      subnet_ids          = module.vpc.private_subnets
+    },
+    ssmmessages = {
+      service             = "ssmmessages"
+      private_dns_enabled = false
+      subnet_ids          = module.vpc.private_subnets
+    },
+    lambda = {
+      service             = "lambda"
+      private_dns_enabled = false
+      subnet_ids          = module.vpc.private_subnets
+    },
+    ecs = {
+      service             = "ecs"
+      private_dns_enabled = false
+      subnet_ids          = module.vpc.private_subnets
+    },
+    ecs_telemetry = {
+      service             = "ecs-telemetry"
+      private_dns_enabled = false
+      subnet_ids          = module.vpc.private_subnets
+    },
+    ec2 = {
+      service             = "ec2"
+      private_dns_enabled = false
+      subnet_ids          = module.vpc.private_subnets
+    },
+    ec2messages = {
+      service             = "ec2messages"
+      private_dns_enabled = false
+      subnet_ids          = module.vpc.private_subnets
+    },
+    kms = {
+      service             = "kms"
+      private_dns_enabled = false
+      subnet_ids          = module.vpc.private_subnets
+    },
+  }
+
+  tags = merge(local.tags, {
+    endpoint = "true"
+  })
+}
+
+################################################################################
+# Supporting Resources
+################################################################################
+
+data "aws_security_group" "default" {
+  name   = "default"
+  vpc_id = module.vpc.vpc_id
+}
+
+data "aws_iam_policy_document" "generic_endpoint_policy" {
+  statement {
+    effect    = "Deny"
+    actions   = ["*"]
+    resources = ["*"]
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    condition {
+      test     = "StringNotEquals"
+      variable = "aws:SourceVpc"
+
+      values = [module.vpc.vpc_id]
+    }
+  }
 }
