@@ -8,11 +8,8 @@ terraform {
 }
 
 locals {
-  aws_region = data.aws_region.current.name
-  vpc_id     = module.vpc.vpc_id
+  vpc_id = module.vpc.vpc_id
 }
-
-data "aws_region" "current" {}
 
 module "vpc" {
   source = "./modules/vpc"
@@ -27,5 +24,13 @@ module "ecs" {
   identifier      = var.identifier
   private_subnets = module.vpc.vpc.private_subnets
   vpc_id          = local.vpc_id
+}
+
+module "rds" {
+  source = "./modules/rds"
+
+  identifier             = var.identifier
+  db_subnet_group_name   = module.vpc.vpc.database_subnet_group_name
+  vpc_security_group_ids = []
 }
 
