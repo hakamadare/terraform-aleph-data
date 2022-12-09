@@ -19,7 +19,7 @@ variable "db_subnet_group_name" {
   description = "RDS subnet group name"
 
   validation {
-    condition     = can(regex("^[[:alnum:]-]{1,255}$", var.db_subnet_group_name))
+    condition     = can(regex("^[[:lower:][:digit:]-]{1,255}$", var.db_subnet_group_name))
     error_message = "The db_subnet_group_name value must consist of alphanumeric characters and hyphens, no more than 255 characters in length."
   }
 }
